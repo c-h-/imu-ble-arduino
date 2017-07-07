@@ -44,6 +44,7 @@ BLECharacteristic axChar("2A37",  // standard 16-bit characteristic UUID
                               // https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.heart_rate_measurement.xml
 
 int oldTX = 0;  // last ax reading from input
+int oldTXFactor = 0;
 long previousMillis = 0;  // last time the ax was checked, in ms
 
 void setup() {
@@ -133,7 +134,9 @@ void setup() {
      advertising packets and will be visible to remote BLE central devices
      until it receives a new connection */
   blePeripheral.begin();
+  
   Serial.println("Bluetooth device active, waiting for connections...");
+  Serial.println(axService.uuid());
 }
 
 void loop() {
@@ -153,7 +156,7 @@ void loop() {
     while (central.connected()) {
       long currentMillis = millis();
       // if 200ms have passed, check the heart rate measurement:
-      if (currentMillis - previousMillis >= 200) {
+      if (currentMillis - previousMillis >= 100) {
         previousMillis = currentMillis;
         updateTX();
       }
@@ -194,13 +197,18 @@ void updateTX() {
   Serial.print(gy);
   Serial.print("\t");
   Serial.println(gz);
-  int axMeasurement = ax;
-  int tx = map(axMeasurement, 0, 1023, 0, 100);
-  if (tx != oldTX) {      // if the heart rate has changed
+  int axMeasurement = ax + 32768; // move up the measurement so that range is entirely positive
+  // Range of a/g values is [-32768, +32767]
+  // we can send 2 bytes easily
+  // let's lossily compress this a bit
+  int factor = ceil(((double)axMeasurement)/256); // divide to a double then ceiling the result into an int
+  int compressedMeasurement = axMeasurement/factor; // stored as int
+  if (compressedMeasurement != oldTX || factor != oldTXFactor) {      // if the heart rate has changed
     Serial.print("AX is now: "); // print it
-    Serial.println(tx);
-    const unsigned char axCharArray[2] = { 0, (char)tx };
+    Serial.println(axMeasurement);
+    const unsigned char axCharArray[2] = { (char)factor, (char)compressedMeasurement };
     axChar.setValue(axCharArray, 2);  // and update the heart rate measurement characteristic
-    oldTX = tx;           // save the level for next comparison
+    oldTX = compressedMeasurement;    // save the level for next comparison
+    oldTXFactor = factor;
   }
 }
