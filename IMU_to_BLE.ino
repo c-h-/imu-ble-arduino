@@ -42,9 +42,24 @@ BLECharacteristic axChar("2A37",  // standard 16-bit characteristic UUID
     BLERead | BLENotify, 2);  // remote clients will be able to get notifications if this characteristic changes
                               // the characteristic is 2 bytes long as the first field needs to be "Flags" as per BLE specifications
                               // https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.heart_rate_measurement.xml
+BLECharacteristic ayChar("2A38", BLERead | BLENotify, 2);
+BLECharacteristic azChar("2A39", BLERead | BLENotify, 2);
+BLECharacteristic gxChar("2A40", BLERead | BLENotify, 2);
+BLECharacteristic gyChar("2A41", BLERead | BLENotify, 2);
+BLECharacteristic gzChar("2A42", BLERead | BLENotify, 2);
 
-int oldTX = 0;  // last ax reading from input
-int oldTXFactor = 0;
+int axo = 0;  // last ax reading from input
+int axfo = 0;
+int ayo = 0;
+int ayfo = 0;
+int azo = 0;
+int azfo = 0;
+int gxo = 0;
+int gxfo = 0;
+int gyo = 0;
+int gyfo = 0;
+int gzo = 0;
+int gzfo = 0;
 long previousMillis = 0;  // last time the ax was checked, in ms
 
 void setup() {
@@ -197,18 +212,70 @@ void updateTX() {
   Serial.print(gy);
   Serial.print("\t");
   Serial.println(gz);
-  int axMeasurement = ax + 32768; // move up the measurement so that range is entirely positive
+  int axm = ax + 32768; // move up the measurement so that range is entirely positive
   // Range of a/g values is [-32768, +32767]
   // we can send 2 bytes easily
   // let's lossily compress this a bit
-  int factor = ceil(((double)axMeasurement)/256); // divide to a double then ceiling the result into an int
-  int compressedMeasurement = axMeasurement/factor; // stored as int
-  if (compressedMeasurement != oldTX || factor != oldTXFactor) {      // if the heart rate has changed
+  int axf = ceil(((double)axm)/256); // divide to a double then ceiling the result into an int
+  int axmc = axm/axf; // stored as int
+  if (axmc != axo || axf != axfo) {      // if the heart rate has changed
     Serial.print("AX is now: "); // print it
-    Serial.println(axMeasurement);
-    const unsigned char axCharArray[2] = { (char)factor, (char)compressedMeasurement };
+    Serial.println(axm);
+    const unsigned char axCharArray[2] = { (char)axf, (char)axmc };
     axChar.setValue(axCharArray, 2);  // and update the heart rate measurement characteristic
-    oldTX = compressedMeasurement;    // save the level for next comparison
-    oldTXFactor = factor;
+    axo = axmc;    // save the level for next comparison
+    axfo = axf;
+  }
+
+  // now for the other 5 values
+  // AY
+  int aym = ay + 32768;
+  int ayf = ceil(((double)aym)/256);
+  int aymc = aym/ayf;
+  if (aymc != ayo || ayf != ayfo) {
+    const unsigned char ayCharArray[2] = { (char)ayf, (char)aymc };
+    ayChar.setValue(ayCharArray, 2);
+    ayo = aymc;
+    ayfo = ayf;
+  }
+  // AZ
+  int azm = az + 32768;
+  int azf = ceil(((double)azm)/256);
+  int azmc = azm/azf;
+  if (azmc != azo || azf != azfo) {
+    const unsigned char azCharArray[2] = { (char)azf, (char)azmc };
+    azChar.setValue(azCharArray, 2);
+    azo = azmc;
+    azfo = azf;
+  }
+  // GX
+  int gxm = gx + 32768;
+  int gxf = ceil(((double)gxm)/256);
+  int gxmc = gxm/gxf;
+  if (gxmc != gxo || gxf != gxfo) {
+    const unsigned char gxCharArray[2] = { (char)gxf, (char)gxmc };
+    gxChar.setValue(gxCharArray, 2);
+    gxo = gxmc;
+    gxfo = gxf;
+  }
+  // GY
+  int gym = gy + 32768;
+  int gyf = ceil(((double)gym)/256);
+  int gymc = gym/gyf;
+  if (gymc != gyo || gyf != gyfo) {
+    const unsigned char gyCharArray[2] = { (char)gyf, (char)gymc };
+    gyChar.setValue(gyCharArray, 2);
+    gyo = gymc;
+    gyfo = gyf;
+  }
+  // GZ
+  int gzm = gz + 32768;
+  int gzf = ceil(((double)gzm)/256);
+  int gzmc = gzm/gzf;
+  if (gzmc != gzo || gzf != gzfo) {
+    const unsigned char gzCharArray[2] = { (char)gzf, (char)gzmc };
+    gzChar.setValue(gzCharArray, 2);
+    gzo = gzmc;
+    gzfo = gzf;
   }
 }
